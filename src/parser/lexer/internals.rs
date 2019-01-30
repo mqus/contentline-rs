@@ -1,67 +1,18 @@
-use std::fmt;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
+use crate::parser::lexer::*;
 use std::sync::mpsc::Sender;
-use std::thread;
-use std::thread::JoinHandle;
-
-pub type Pos = usize;
-
-macro_rules! state {
-	($f:ident) => (Some(State{inner:Self::$f}))
-}
-
-#[derive(Clone,Debug)]
-pub struct Item {
-	pub typ: ItemType,
-	pub pos: Pos,
-	pub val: String,
-	pub line: u32,
-}
-
-impl fmt::Display for Item {
-	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		if let ItemType::Error = self.typ {
-			write!(f, "{}", self.val)
-		} else if self.val.len() > 10 {
-			write!(f, "{:.10}...", self.val)
-		} else {
-			write!(f, "{}", self.val)
-		}
-	}
-}
-#[derive(Clone,Debug)]
-pub enum ItemType {
-	// error occurred; value is text of error
-	Error,
-	// equals ('=') used for character-assignment
-	//Equals,
-	// :
-	//Colon,
-	// ;
-	//Semicolon,
-	// ,
-	//Comma,
-	// the value of a property parameter, can contain ^^, ^' or ^n
-	ParamValue,
-	// the value of a property, if the property is of type TEXT, the value can contain \\ , \; , \, , \n or \N
-	PropValue,
-	// the Property Name
-	Id,
-	// an indicator for the start of a component
-	Begin,
-	// an indicator for the end of a component
-	End,
-	// the component name
-	CompName,
-}
 
 const WSP: &str = " 	";
 const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const COMP_BEGIN_S: &str = "BEGIN";
 const COMP_END_S: &str = "END";
 
-struct Lexer {
+enum Rune {
+	EOF,
+	Invalid,
+	Valid(char),
+}
+
+pub struct Lexer {
 	// documented for error messages
 	line: u32,
 	// the string being scanned
@@ -79,13 +30,36 @@ struct Lexer {
 
 
 type StateFn = fn(&mut Lexer) -> Option<State>;
+type StateFn2 = fn(&mut Lexer) -> NextState;
+
+enum NextState{
+	State(StateFn2),
+	Stop
+}
 
 //Workaround, sadly we can't put StateFn directly into the Option.
+macro_rules! state {
+	($f:ident) => (Some(State{inner:Self::$f}))
+}
 struct State {
 	inner: StateFn
 }
 
 impl Lexer {
+	pub fn new(line:u32,input:String,item_sender:Sender<Item>)->Self{
+		Lexer {
+			line,
+			input,
+			pos: 0,
+			start: 0,
+			width: 0,
+			item_sender,
+		}
+	}
+
+
+
+
 	fn next(&mut self) -> Rune {
 		if self.pos >= self.input.len() {
 			self.width = 0;
@@ -199,12 +173,13 @@ impl Lexer {
 	}
 
 	// run runs the state machine for the lexer.
-	fn run(mut self) {
+	pub fn run(mut self) ->Self{
 		let mut sfn: StateFn = Self::lex_prop_name;
 
 		while let Some(outer) = sfn(&mut self) {
 			sfn = outer.inner;
 		}
+		self
 		// l is dropped, l.item_sender is closed
 	}
 
@@ -326,68 +301,3 @@ impl Lexer {
 	}
 }
 
-// lex creates a new scanner for the input string.
-pub fn new(line: u32, input: String) -> LexerHandle {
-	let (s, r) = mpsc::channel();
-
-	let l = Lexer {
-		line,
-		input: input.clone(),
-		pos: 0,
-		start: 0,
-		width: 0,
-		item_sender: s,
-	};
-
-	let jh = thread::spawn(move || l.run());
-
-	let lh = LexerHandle {
-		item_receiver: r,
-		join_handle: jh,
-		input,
-	};
-
-	lh
-}
-
-pub struct LexerHandle {
-	item_receiver: Receiver<Item>,
-	join_handle: JoinHandle<()>,
-	pub input:String,
-}
-
-
-impl LexerHandle {
-	pub fn next_item(&self) -> Option<Item> {
-		self.item_receiver.recv().ok()
-	}
-
-	pub fn drain(&self) {
-		for s in self.item_receiver.iter() {
-		}
-	}
-}
-
-impl Drop for LexerHandle {
-	fn drop(&mut self) {
-		self.drain()
-		//MAYBE clean up thread
-		//self.join_handle.join()
-	}
-}
-
-//struct LexerError<'a>{ item:Item }
-//
-//impl Error for LexerError{}
-//impl fmt::Display for LexerError{
-//	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-//		write!(f,"Error while parsing:{}", self.item)
-//	}
-//}
-
-
-enum Rune {
-	EOF,
-	Invalid,
-	Valid(char),
-}

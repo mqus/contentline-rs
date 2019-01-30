@@ -1,5 +1,5 @@
 mod parser;
-mod lexer;
+
 mod helper;
 #[cfg(test)]
 mod tests {
