@@ -1,0 +1,8 @@
+[package]
+name = "ical-backend-rs"
+version = "0.1.0"
+authors = ["Markus Richter <mqus at disroot.org>"]
+edition = "2018"
+
+[dependencies]
+failure = "0.1.5"
