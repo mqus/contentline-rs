@@ -1,7 +1,6 @@
 use std::fmt;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
 use std::thread;
 use std::thread::JoinHandle;
 use std::error::Error;
@@ -61,14 +60,13 @@ pub enum ItemType {
 pub fn new(line: u32, input: String) -> LexerHandle {
 	let (s, r) = mpsc::channel();
 
-	let l = Lexer::new(line,input.clone(),s);
+	let l = Lexer::new(line,input,s);
 
 	let jh = thread::spawn(move || l.run());
 
 	let lh = LexerHandle {
 		item_receiver: r,
 		join_handle: jh,
-		input,
 	};
 
 	lh
@@ -77,7 +75,6 @@ pub fn new(line: u32, input: String) -> LexerHandle {
 pub struct LexerHandle {
 	item_receiver: Receiver<Item>,
 	join_handle: JoinHandle<Lexer>,
-	pub input:String,
 }
 
 
@@ -91,7 +88,7 @@ impl LexerHandle {
 		}
 	}
 
-	pub fn drain_and_join(mut self)->Lexer{
+	pub fn drain_and_join(self)->Lexer{
 		self.drain();
 		self.join_handle.join().unwrap_or_else(|_|panic!("Couldn't join, Thread panicked!"))
 	}
@@ -119,9 +116,9 @@ pub struct LexerError {
 const ERROR_CONTEXT_RADIUS: usize = 20;
 
 impl LexerError {
-	pub fn new(line: String, i: Item, msg: &str) -> Self {
+	pub fn new(ctx:LexerHandle, i: Item, msg: &str) -> Self {
 		LexerError {
-			ctx: line,
+			ctx: ctx.drain_and_join().input,
 			msg: msg.to_string(),
 			i,
 		}

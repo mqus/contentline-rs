@@ -18,7 +18,7 @@ pub struct Lexer {
 	// documented for error messages
 	line: u32,
 	// the string being scanned
-	input: String,
+	pub input: String,
 	// current position in the input
 	pos: Pos,
 	// start position of this item
@@ -166,9 +166,11 @@ impl Lexer {
 
 	// run runs the state machine for the lexer.
 	pub fn run(mut self) -> Self {
-		let mut sfn: StateFn = lex_prop_name;
+		let mut state = Next(lex_prop_name);
 
-		while let Next(sfn) = sfn(&mut self) {}
+		while let Next(sfn) = state {
+			state=sfn(&mut self);
+		}
 		self
 		// l is dropped, l.item_sender is closed
 	}
