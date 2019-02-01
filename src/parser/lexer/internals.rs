@@ -3,8 +3,7 @@ use std::sync::mpsc::Sender;
 use crate::parser::lexer::*;
 use crate::parser::lexer::internals::State::*;
 
-const WSP: &str = " 	";
-const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+pub const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const COMP_BEGIN_S: &str = "BEGIN";
 const COMP_END_S: &str = "END";
 
