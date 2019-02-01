@@ -10,6 +10,7 @@ mod helper;
 
 pub type Parameters = HashMap<String, Vec<String>>;
 
+#[derive(Debug)]
 pub struct Property {
 	pub name: String,
 	pub value: String,
@@ -61,6 +62,7 @@ impl Property {
 	//MAYBE implement more API
 }
 
+#[derive(Debug)]
 pub struct Component {
 	pub name: String,
 	pub properties: Vec<Property>,

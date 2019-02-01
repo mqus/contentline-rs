@@ -20,7 +20,7 @@ pub struct Parser<R: BufRead> {
 	lexer: Option<LexerHandle>,
 	line: u32,
 	next_line: u32,
-	r: Peekable<Split<R>>,//TODO:Reader
+	r: Peekable<Split<R>>,
 }
 
 impl<R> Parser<BufReader<R>> where R: Read {
@@ -84,17 +84,28 @@ impl<R> Parser<R> where R: BufRead {
 				Some(i) => match i.typ {
 					ItemType::Begin => out.sub_components.push(self.parse_component()?),
 					ItemType::Id => out.properties.push(self.parse_property(i.val)?),
-					ItemType::End => if i.val == out.name {
-						return Ok(out);
-					} else {
-						return Err(Box::new(ParseError {
-							msg: format!("expected END:{}, got END:{}", out.name, i.val)
-						}));
-					}
+					ItemType::End => break,
 					_ => unreachable!("unexpected item type in parser::parse_component"),
 				}
 			}
 		}
+		match self.get_next_item()? {
+			Some(item) => {
+				if item.typ == ItemType::CompName {
+					if item.val == out.name {
+						return Ok(out);
+					} else {
+						return Err(Box::new(ParseError {
+							msg: format!("expected END:{}, got END:{}", out.name, item.val)
+						}));
+					}
+				} else {
+					unreachable!("unexpected item type in parser::parse_component")
+				}
+			}
+			None => unreachable!("unexpected EOF in parser::parse_component"),
+		}
+
 	}
 
 	//parseProperty parses the next Property while already having parsed the Property name.

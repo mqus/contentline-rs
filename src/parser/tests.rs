@@ -7,52 +7,122 @@ use std::io::Cursor;
 use crate::Parser;
 
 #[test]
-fn parse_successful() {
-	let cases = [
-		//simplest case
-		("BEGIN:comp\r\nEND:Comp\r\n",
-		 c2("COMP")),
-		//simplest case with nested Components
-		("BEGIN:comp\r\nBEGIN:inner\r\nEND:inner\r\nEND:Comp\r\n",
-		 c("COMP",vec![],vec![c2("INNER")])),
-		//test Property
-		("BEGIN:comp\r\nFEATURE:Content:'!,;.'\r\nEND:Comp\r\n",
-		 c("COMP", vec![p2("FEATURE","Content:'!,;.'")],vec![])),
-		//check unfolding
-		("BEGIN:comp\r\nFEATURE:Conten\r\n t:'!,;.'\r\nEND:Comp\r\n",
-		 c("COMP", vec![p2("FEATURE", "Content:'!,;.'")],vec![])),
-		//check parameter
-		("BEGIN:comp\r\nFEATURE;LANG=en:LoremIpsum\r\nEND:Comp\r\n",
-		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["en"])]))],vec![])),
-		//check quoted parameter
-		("BEGIN:comp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nEND:Comp\r\n",
-		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])]))],vec![])),
-		//check RFC6868-Escaping
-		("BEGIN:comp\r\nFEATURE;LANG=e^^^n:LoremIpsum\r\nEND:Comp\r\n",
-		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e^\n"])]))],vec![])),
-		//check multiple Parameters with multiple values, variably encoded and folded
-		("BEGIN:comp\r\nFEATURE;Par1=e^'^n,\"other^,val\";PAR2=\"\r\n display:none;\",not interesting:LoremIpsum\r\nEND:Comp\r\n",
-		 c("COMP",vec![p("FEATURE", "LoremIpsum", pm(vec![
-							 ("PAR1",vec!["e\"\n", "other^,val"]),
-							 ("PAR2",vec!["display:none;", "not interesting"])
-						 ]))],vec![])),
-		//check property in nested Component
-		("BEGIN:comp\r\nBEGIN:iNnErCoMp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nEND:InNeRcOmP\r\nEND:Comp\r\n",
-		c("COMP",vec![],vec![
-			c("INNERCOMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])]))],vec![])
-		])),
-		//check property next to nested Component
-		("BEGIN:comp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nBEGIN:iNnErCoMp\r\nEND:InNeRcOmP\r\nFEATURE;LAng2=\"e;n\":LoremIpsum\r\nEND:Comp\r\n",
-		c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])]))],vec![
-			c("INNERCOMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG2",vec!["e;n"])]))],vec![])
-		])),
-	];
+fn parse_simple(){
+	test("BEGIN:comp\r\nEND:Comp\r\n", c2("COMP"))
+}
 
-	for (input,expect) in cases.iter(){
-		let x=Cursor::new(input.as_bytes());
-		let mut  p=Parser::new(x);
-		let got=p.next_component().unwrap().unwrap();
-		assert_comp_equal(expect, &got)
+#[test]
+fn parse_simple_nested(){
+	test("BEGIN:comp\r\nBEGIN:inner\r\nEND:inner\r\nEND:Comp\r\n",
+		 c("COMP",vec![],vec![c2("INNER")]))
+}
+
+#[test]
+fn parse_with_property(){
+	test("BEGIN:comp\r\nFEATURE:Content:'!,;.'\r\nEND:Comp\r\n",
+		 c("COMP", vec![p2("FEATURE","Content:'!,;.'")],vec![]))
+}
+
+#[test]
+fn parse_unfolding(){
+	test("BEGIN:comp\r\nFEATURE:Conten\r\n t:'!,;.'\r\nEND:Comp\r\n",
+		 c("COMP", vec![p2("FEATURE", "Content:'!,;.'")],vec![]))
+}
+
+#[test]
+fn parse_parameter(){
+	test("BEGIN:comp\r\nFEATURE;LANG=en:LoremIpsum\r\nEND:Comp\r\n",
+		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["en"])]))],vec![]))
+}
+
+#[test]
+fn parse_quoted_parameter(){
+	test("BEGIN:comp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nEND:Comp\r\n",
+		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])]))],vec![]))
+}
+
+#[test]
+fn parse_with_rfc6868_escaping(){
+	test("BEGIN:comp\r\nFEATURE;LANG=e^^^n:LoremIpsum\r\nEND:Comp\r\n",
+		 c("COMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e^\n"])]))],vec![]))
+}
+
+#[test]
+fn parse_complex(){
+	test("BEGIN:comp\r\nFEATURE;Par1=e^'^n,\"other^,val\";PAR2=\"\r\n display:none;\",not interesting:LoremIpsum\r\nEND:Comp\r\n",
+		 c("COMP",vec![p("FEATURE", "LoremIpsum", pm(vec![
+			 ("PAR1",vec!["e\"\n", "other^,val"]),
+			 ("PAR2",vec!["display:none;", "not interesting"])
+		 ]))],vec![]))
+}
+
+#[test]
+fn parse_nested_component(){
+	test("BEGIN:comp\r\nBEGIN:iNnErCoMp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nEND:InNeRcOmP\r\nEND:Comp\r\n",
+		 c("COMP",vec![],vec![
+			 c("INNERCOMP",vec![p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])]))],vec![])
+		 ]))
+}
+
+#[test]
+fn parse_nested_and_property(){
+	test("BEGIN:comp\r\nFEATURE;LAng=\"e;n\":LoremIpsum\r\nBEGIN:iNnErCoMp\r\nEND:InNeRcOmP\r\nFEATURE;LAng2=\"e;n\":LoremIpsum\r\nEND:Comp\r\n",
+		 c("COMP",vec![
+			 p("FEATURE", "LoremIpsum",pm(vec![("LANG",vec!["e;n"])])),
+			 p("FEATURE", "LoremIpsum",pm(vec![("LANG2",vec!["e;n"])]))
+		 ],vec![c("INNERCOMP",vec![],vec![])]))
+}
+
+#[test]
+fn parse_two_components(){
+	let input="BEGIN:comp\r\nEND:Comp\r\nBEGIN:porp\r\nEND:poRp\r\n";
+	let expect1=c2("COMP");
+	let expect2=c2("PORP");
+
+	let x=Cursor::new(input.as_bytes());
+	let mut  p=Parser::new(x);
+	let got1=p.next_component().unwrap().unwrap();
+	let got2=p.next_component().unwrap().unwrap();
+	assert_comp_equal(&got1,&expect1);
+	assert_comp_equal(&got2,&expect2);
+	if let Some(x) = p.next_component().unwrap(){
+		panic!("expected EOF, but got:\n{:#?}",x)
+	}
+}
+
+#[test]
+fn parse_utf_splitting_fold(){
+	//test if the parser allows for folds (a \r\n newline followed by a space) within a utf8-codepoint sequence.
+
+	let expected=c("COMP", vec![p2("FEATURE", "\u{2764}Content:'!,;.'")],vec![]);
+
+	let prefix="BEGIN:comp\r\nFEATURE:";
+	let bytes=vec![0xE2_u8,0x9D,0xA4];//UTF8 Heart Character
+	let fold="\r\n ";
+	let suffix="Content:'!,;.'\r\nEND:Comp\r\n";
+
+	let mut x=vec![];
+
+	x.extend_from_slice(prefix.as_bytes());
+	x.extend_from_slice(&bytes[0..2]);
+	x.extend_from_slice(fold.as_bytes());
+	x.extend_from_slice(&bytes[2..3]);
+	x.extend_from_slice(suffix.as_bytes());
+	test_bytes(x.as_slice(),expected);
+}
+
+
+fn test(input:&str, expected:Component){
+	test_bytes(input.as_bytes(), expected);
+}
+
+fn test_bytes(input:&[u8], expected:Component){
+	let x=Cursor::new(input);
+	let mut p=Parser::new(x);
+	let got=p.next_component().unwrap().unwrap();
+	assert_comp_equal(&got,&expected);
+	if let Some(x) = p.next_component().unwrap(){
+		panic!("expected EOF, but got:\n{:#?}",x)
 	}
 }
 
@@ -89,6 +159,21 @@ fn pm(vals:Vec<(&str,Vec<&str>)>)->Parameters{
 }
 
 fn assert_comp_equal(a:&Component,b:&Component){
-	assert_eq!(a.name, b.name)
+	assert_eq!(a.name, b.name, "component names");
+	assert_eq!(a.properties.len(),b.properties.len(), "property count, components:\n{:#?}\n{:#?}",a,b);
+	assert_eq!(a.sub_components.len(),b.sub_components.len(), "subcomponent count");
 
+	for i in 0..a.properties.len(){
+		assert_prop_equal(&a.properties[i], &b.properties[i]);
+	}
+
+	for i in 0..a.sub_components.len(){
+		assert_comp_equal(&a.sub_components[i], &b.sub_components[i]);
+	}
+}
+
+fn assert_prop_equal(a:&Property,b:&Property){
+	assert_eq!(a.name,b.name,"property names");
+	assert_eq!(a.value,b.value,"property values");
+	assert_eq!(a.parameters.len(),b.parameters.len(),"parameter counts")
 }
