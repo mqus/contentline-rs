@@ -2,11 +2,14 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
+pub use crate::encode::Encoder;
 pub use crate::parser::{ParseError, Parser};
 
 mod parser;
+mod encode;
 
-mod helper;
+#[cfg(test)]
+mod encode_tests;
 
 pub type Parameters = HashMap<String, Vec<String>>;
 
@@ -15,7 +18,7 @@ pub struct Property {
 	pub name: String,
 	pub value: String,
 	pub parameters: Parameters,
-	pub old_line: Option<(String,u32)>,
+	pub old_line: Option<(String, u32)>,
 }
 
 impl Property {
@@ -50,12 +53,12 @@ impl Property {
 		Ok(())
 	}
 
-	pub fn add_param(&mut self,name:String,value:String){
+	pub fn add_param(&mut self, name: String, value: String) {
 		self.parameters.entry(name)
 				.or_default().push(value);
 	}
 
-	pub fn get_param_value(&self,name:&str) ->Option<&Vec<String>>{
+	pub fn get_param_value(&self, name: &str) -> Option<&Vec<String>> {
 		self.parameters.get(name)
 	}
 
@@ -70,17 +73,17 @@ pub struct Component {
 }
 
 impl Component {
-	pub fn new_empty(name:String) -> Result<Self, InvalidNameError> {
-		Self::new(name,Vec::new(),Vec::new())
+	pub fn new_empty(name: String) -> Result<Self, InvalidNameError> {
+		Self::new(name, Vec::new(), Vec::new())
 	}
 
 	pub fn new(name: String, properties: Vec<Property>, sub_components: Vec<Component>) -> Result<Self, InvalidNameError> {
-		let c=Component{name,properties,sub_components};
+		let c = Component { name, properties, sub_components };
 		c.check()?;
 		Ok(c)
 	}
 
-	pub fn check(&self)->Result<(),InvalidNameError>{
+	pub fn check(&self) -> Result<(), InvalidNameError> {
 		if let Some(c) = is_valid_name(&self.name) {
 			return Err(InvalidNameError {
 				typ: NameType::Component,
@@ -100,22 +103,33 @@ impl Component {
 	}
 	//MAYBE implement more API
 
-	pub fn find_property(&self,name:&str) ->Vec<&Property>{
-		let mut out=Vec::new();
-		for p in &self.properties{
-			if p.name == name{
+	pub fn find_property(&self, name: &str) -> Vec<&Property> {
+		let mut out = Vec::new();
+		for p in &self.properties {
+			if p.name == name {
 				out.push(p);
 			}
 		}
 		out
 	}
 
-	pub fn add_property(&mut self,p:Property){
+	pub fn add_property(&mut self, p: Property) {
 		self.properties.push(p)
 	}
 
-	pub fn add_sub_component(&mut self,c:Component){
+	pub fn add_sub_component(&mut self, c: Component) {
 		self.sub_components.push(c)
+	}
+
+	pub fn encode_to_string(&self) -> String {
+		let mut e = Encoder::new(vec![]);
+
+		//there really should not be any io errors, as the target is only memory.
+		e.encode(self).unwrap();
+
+		//there should also be no utf8 encoding errors, as the input is a structure of UTF8-Strings
+		// and we take care not to produce invalid characters.
+		String::from_utf8(e.into_writer()).unwrap()
 	}
 }
 
@@ -129,17 +143,6 @@ pub fn is_valid_name(name: &str) -> Option<char> {
 	}
 	None
 }
-
-#[cfg(test)]
-mod tests {
-	#[test]
-	fn it_works() {
-		assert_eq!(2 + 2, 4);
-		let s = "àǜòŋäïu╭";
-		println!("'{}':{}", s, s.len());
-	}
-}
-
 
 #[derive(Debug)]
 pub struct InvalidNameError {

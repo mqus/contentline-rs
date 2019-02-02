@@ -4,8 +4,8 @@ use crate::parser::lexer::*;
 use crate::parser::lexer::internals::State::*;
 
 pub const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const COMP_BEGIN_S: &str = "BEGIN";
-const COMP_END_S: &str = "END";
+pub const COMP_BEGIN_S: &str = "BEGIN";
+pub const COMP_END_S: &str = "END";
 
 enum Rune {
 	EOF,

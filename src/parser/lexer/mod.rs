@@ -5,7 +5,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 use std::thread::JoinHandle;
 
-pub use crate::parser::lexer::internals::ALLOWED_PARAMETER_NAME_CHARS;
+pub use crate::parser::lexer::internals::{ALLOWED_PARAMETER_NAME_CHARS,COMP_END_S,COMP_BEGIN_S};
 use crate::parser::lexer::internals::Lexer;
 
 pub type Pos = usize;

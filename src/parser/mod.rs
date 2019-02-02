@@ -7,14 +7,19 @@ use std::io::Split;
 use std::iter::Peekable;
 
 use crate::{Component, Parameters, Property};
-pub use crate::parser::lexer::ALLOWED_PARAMETER_NAME_CHARS;
+pub use crate::parser::lexer::{ALLOWED_PARAMETER_NAME_CHARS,COMP_BEGIN_S,COMP_END_S};
 use crate::parser::lexer::Item;
 use crate::parser::lexer::ItemType;
 use crate::parser::lexer::LexerError;
 use crate::parser::lexer::LexerHandle;
 
+#[cfg(test)]
+pub use crate::parser::tests::{c,c2,p,pm,p2};
+
 mod lexer;
 pub mod rfc6868;
+#[cfg(test)]
+mod tests;
 
 pub struct Parser<R: BufRead> {
 	lexer: Option<LexerHandle>,
@@ -243,5 +248,4 @@ impl fmt::Display for ParseError {
 }
 
 
-#[cfg(test)]
-mod tests;
+
