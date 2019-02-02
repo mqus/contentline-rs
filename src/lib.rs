@@ -4,6 +4,7 @@ use std::fmt;
 
 pub use crate::encode::Encoder;
 pub use crate::parser::{ParseError, Parser};
+use crate::encode::ComponentEncode;
 
 mod parser;
 mod encode;
@@ -122,14 +123,14 @@ impl Component {
 	}
 
 	pub fn encode_to_string(&self) -> String {
-		let mut e = Encoder::new(vec![]);
+		let mut buf = vec![];
 
 		//there really should not be any io errors, as the target is only memory.
-		e.encode(self).unwrap();
+		buf.encode_component(self).unwrap();
 
 		//there should also be no utf8 encoding errors, as the input is a structure of UTF8-Strings
 		// and we take care not to produce invalid characters.
-		String::from_utf8(e.into_writer()).unwrap()
+		String::from_utf8(buf).unwrap()
 	}
 }
 
