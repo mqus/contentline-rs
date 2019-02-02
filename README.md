@@ -8,3 +8,5 @@ A backend for VCARD/iCal parsers/encoders. Transforms byte streams to a Componen
  - Tests for parser errors
  - Encoder API redesign
  - Documentation
+
+Categories:encoding,parser-implementations,
