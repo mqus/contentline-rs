@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender;
 
 use crate::parser::lexer::*;
 use crate::parser::lexer::internals::State::*;
@@ -13,6 +13,7 @@ enum Rune {
 	Valid(char),
 }
 
+#[derive(Debug)]
 pub struct Lexer {
 	// documented for error messages
 	line: u32,
@@ -26,7 +27,7 @@ pub struct Lexer {
 	width: Pos,
 	// channel of scanned items
 	//item_receiver: Receiver<Item>,
-	item_sender: Sender<Item>,
+	item_sender: SyncSender<Item>,
 }
 
 
@@ -39,7 +40,7 @@ enum State {
 
 
 impl Lexer {
-	pub fn new(line: u32, input: String, item_sender: Sender<Item>) -> Self {
+	pub fn new(line: u32, input: String, item_sender: SyncSender<Item>) -> Self {
 		Lexer {
 			line,
 			input,
@@ -152,15 +153,19 @@ impl Lexer {
 	// errorf returns an error token and terminates the scan by passing
 	// back a Stop that will be the next state, closing the channel.
 	fn errorf(&mut self, errstr: &str) -> State {
-		self.item_sender.send(
+		match self.item_sender.send(
 			Item {
 				typ: ItemType::Error,
 				pos: self.start,
 				val: errstr.to_string(),
 				line: self.line,
 			}
-		).unwrap();
-		Stop
+		){
+			Err(e)=>{
+				panic!(e.to_string())
+			},
+			Ok(())=>Stop,
+		}
 	}
 
 	// run runs the state machine for the lexer.

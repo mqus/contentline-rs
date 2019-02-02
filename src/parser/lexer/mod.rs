@@ -53,11 +53,18 @@ pub enum ItemType {
 
 // lex creates a new scanner for the input string.
 pub fn new(line: u32, input: String) -> LexerHandle {
-	let (s, r) = mpsc::channel();
+	let (s, r) = mpsc::sync_channel(0);
 
 	let l = Lexer::new(line, input.clone(), s);
 
+	#[cfg(debug_assertions)]//THIS IS UNSAFE! input can contain \0 or other unknown evil bytes
+	let jh = thread::Builder::new()
+			.name("lexer".to_string() + &input[0..input.len().min(8)])
+			.spawn(move || l.run())
+			.unwrap();
+	#[cfg(not(debug_assertions))]
 	let jh = thread::spawn(move || l.run());
+
 
 	let lh = LexerHandle {
 		item_receiver: r,
@@ -68,15 +75,17 @@ pub fn new(line: u32, input: String) -> LexerHandle {
 	lh
 }
 
+#[derive(Debug)]
 pub struct LexerHandle {
 	item_receiver: Receiver<Item>,
 	join_handle: JoinHandle<Lexer>,
-	line: (String,u32),
+	line: (String, u32),
 }
 
 impl LexerHandle {
 	pub fn next_item(&self) -> Option<Item> {
-		self.item_receiver.recv().ok()
+		let x=self.item_receiver.recv();
+		x.ok()
 	}
 
 	pub fn get_line(&self) ->(String,u32){
@@ -84,7 +93,7 @@ impl LexerHandle {
 	}
 
 	pub fn drain(&self) {
-		for _item in self.item_receiver.iter() {}
+		for _item in self.item_receiver.try_iter() {}
 	}
 
 	pub fn drain_and_join(self) -> Lexer {

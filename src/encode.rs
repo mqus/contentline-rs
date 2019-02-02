@@ -24,27 +24,27 @@ impl<W> Encoder<W> where W: Write {
 	}
 
 	pub fn encode_all(&mut self, component: &[Component]) -> Result<()> {
-		for c in component{
+		for c in component {
 			self.out.encode_component(c)?
 		}
 		Ok(())
 	}
 
-	pub fn encode_into_writer(writer:&mut W, component:&Component) ->Result<()>{
+	pub fn encode_into_writer(writer: &mut W, component: &Component) -> Result<()> {
 		writer.encode_component(component)
 	}
 }
 
-pub trait ComponentEncode{
-	fn encode_component(&mut self,component:&Component)->Result<()>;
+pub trait ComponentEncode {
+	fn encode_component(&mut self, component: &Component) -> Result<()>;
 }
 
-impl<W> ComponentEncode for W where W:Write{
+impl<W> ComponentEncode for W where W: Write {
 	fn encode_component(&mut self, component: &Component) -> Result<()> {
 		write!(self, "{}:{}\r\n", COMP_BEGIN_S, component.name.to_uppercase())?;
 
 		for prop in &component.properties {
-			encode_property(self,prop)?;
+			encode_property(self, prop)?;
 		}
 
 		for comp in &component.sub_components {
@@ -54,10 +54,9 @@ impl<W> ComponentEncode for W where W:Write{
 		write!(self, "{}:{}\r\n", COMP_END_S, component.name.to_uppercase())?;
 		Ok(())
 	}
-
 }
 
-fn encode_property<W:Write>(writer:&mut W, property:&Property) ->Result<()>{
+fn encode_property<W: Write>(writer: &mut W, property: &Property) -> Result<()> {
 	let mut buf = vec![];
 
 	write_folded(writer, &mut buf, &property.name.to_uppercase())?;
@@ -86,10 +85,10 @@ fn encode_property<W:Write>(writer:&mut W, property:&Property) ->Result<()>{
 	write_folded(writer, &mut buf, ":")?;
 	write_folded(writer, &mut buf, &property.value)?;
 	writer.write(buf.as_slice())?;
-	write!(writer,"\r\n")
+	write!(writer, "\r\n")
 }
 
-fn write_folded<W:Write>(writer:&mut W, buf: &mut Vec<u8>, mut data: &str) -> Result<()> {
+fn write_folded<W: Write>(writer: &mut W, buf: &mut Vec<u8>, mut data: &str) -> Result<()> {
 	while buf.len() + data.len() > FOLDING_LENGTH {
 		//dlen bytes of data can fit into the current line.
 		let mut dlen = FOLDING_LENGTH - buf.len();

@@ -22,6 +22,7 @@ fn test_bytes(input:&[u8], expected:Component){
 	}
 }
 
+//Convenience functions for quickly setting up Components, Properties and Parameters
 pub fn c(name:&str, props:Vec<Property>, comps:Vec<Component>)->Component{
 	Component{
 		name: name.to_string(),
@@ -91,6 +92,13 @@ fn assert_prop_equal(a:&Property,b:&Property){
 
 
 
+#[test]
+fn parse_empty(){
+	let x=Cursor::new("".as_bytes());
+	let mut p=Parser::new(x);
+	let got=p.next_component().unwrap();
+	assert!(got.is_none());
+}
 
 #[test]
 fn parse_simple(){
@@ -206,10 +214,49 @@ fn parse_cornercase_fold(){
 }
 
 
+//fn test_error<'a,P:Pattern<'a>>(input:&str, error:P){
+fn test_error(input:&str, error:&str){
+	let x=Cursor::new(input);
+	let mut p=Parser::new(x);
+
+	match p.next_component(){
+		Err(e) => {
+			//check if error is the expected error
+			if !e.to_string().contains(error){
+				panic!("Didn't get the expected error, got:\n{:?}\nDescription: {:?}",e, e.to_string());
+			}
+		},
+		Ok(c) => panic!("Expected an error, but got:{:?}",c),
+	};
+
+
+}
+
+
 //TESTS: EXPECTED ERRORS /TODO
 #[test]
-fn wrong_comp_id(){
+fn empty_line(){
+	test_error("\r\n","expected one or more alphanumerical characters or '-'");
+}
 
+#[test]
+fn wrong_linebreak(){
+	test_error("\n","expected one or more alphanumerical characters or '-'");
+}
+
+#[test]
+fn wrong_comp_begin(){
+	test_error("BEG\r\n","unexpected identifier, expected BEGIN");
+}
+
+#[test]
+fn wrong_comp_begin2(){
+	test_error("BEG:\r\n","unexpected identifier, expected BEGIN");
+}
+
+#[test]
+fn wrong_comp_begin3(){
+	test_error("BEGIN\r\n","1: \texpected ':': BEGIN<HERE>\n");
 }
 
 //wrong prop id
