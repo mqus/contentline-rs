@@ -1,4 +1,4 @@
-use crate::parser::{c2, p2};
+use crate::test_helper::{c2, p2};
 
 #[test]
 fn simple() {

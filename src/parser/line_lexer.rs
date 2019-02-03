@@ -1,9 +1,8 @@
 use core::fmt;
 use crate::parser::line_lexer::State::*;
+use crate::ALLOWED_PARAMETER_NAME_CHARS;
+use crate::{COMP_BEGIN_S,COMP_END_S};
 
-pub const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-pub const COMP_BEGIN_S: &str = "BEGIN";
-pub const COMP_END_S: &str = "END";
 pub type Pos = usize;
 
 type StateFn = fn(&mut LineLexer) -> State;

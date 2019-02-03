@@ -2,8 +2,8 @@ use std::io::Result;
 use std::io::Write;
 
 use crate::{Component, Property};
-use crate::parser::{COMP_BEGIN_S, COMP_END_S};
 use crate::parser::rfc6868;
+use crate::{COMP_END_S,COMP_BEGIN_S};
 
 const FOLDING_LENGTH: usize = 75;
 

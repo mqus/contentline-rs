@@ -8,7 +8,6 @@ A backend for VCARD/iCal parsers/encoders. Transforms byte streams to a Componen
 
  - Cleanup/reorganize
    - make one errortype (/enum) for parser
-   - maybe make lexer be in the same thread...
- - Tests for parser errors
+ - more Tests for parser errors
  - Documentation
 

@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 pub use crate::encode::Encoder;
-pub use crate::parser::{ParseError, Parser};
+pub use crate::parser::{ParseError, Parser, rfc6868};
 use crate::encode::ComponentEncode;
 
 mod parser;
@@ -12,7 +12,14 @@ mod encode;
 #[cfg(test)]
 mod encode_tests;
 
+#[cfg(test)]
+mod test_helper;
+
+
 pub type Parameters = HashMap<String, Vec<String>>;
+const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const COMP_BEGIN_S: &str = "BEGIN";
+const COMP_END_S: &str = "END";
 
 #[derive(Debug)]
 pub struct Property {
@@ -137,7 +144,6 @@ impl Component {
 
 pub fn is_valid_name(name: &str) -> Option<char> {
 	for (_, c) in name.char_indices() {
-		use crate::parser::ALLOWED_PARAMETER_NAME_CHARS;
 		if !ALLOWED_PARAMETER_NAME_CHARS.contains(c) {
 			return Some(c);
 		}

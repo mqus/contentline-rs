@@ -8,14 +8,13 @@ use std::iter::Peekable;
 
 use crate::{Component, Parameters, Property};
 use crate::parser::errors::LexerError;
-pub use crate::parser::line_lexer::{ALLOWED_PARAMETER_NAME_CHARS, COMP_BEGIN_S, COMP_END_S};
 use crate::parser::line_lexer::{Item,ItemType,LineLexer};
-#[cfg(test)]
-pub use crate::parser::tests::{c, c2, p, p2, pm};
+
 
 mod line_lexer;
 mod errors;
 pub mod rfc6868;
+
 #[cfg(test)]
 mod tests;
 
