@@ -1,11 +1,33 @@
-use std::sync::mpsc::SyncSender;
-
-use crate::parser::lexer::*;
-use crate::parser::lexer::internals::State::*;
+use core::fmt;
+use crate::parser::line_lexer::State::*;
 
 pub const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 pub const COMP_BEGIN_S: &str = "BEGIN";
 pub const COMP_END_S: &str = "END";
+pub type Pos = usize;
+
+type StateFn = fn(&mut LineLexer) -> State;
+
+enum State {
+	Next(StateFn),
+	Stop,
+}
+
+impl fmt::Debug for State {
+	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		match &self{
+			Next(sfn)=> {
+				f.write_str("Next(")?;
+				fmt::Pointer::fmt(&(*sfn as *const ()), f)?;
+				f.write_str(")")
+			},
+			Stop=> write!(f,"Stop")
+		}
+
+	}
+}
+
+
 
 enum Rune {
 	EOF,
@@ -13,56 +35,101 @@ enum Rune {
 	Valid(char),
 }
 
+
+#[derive(Clone, Debug)]
+pub struct Item {
+	pub typ: ItemType,
+	pub pos: Pos,
+	pub val: String,
+	pub line: u32,
+}
+
+impl fmt::Display for Item {
+	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		if let ItemType::Error = self.typ {
+			write!(f, "{}", self.val)
+		} else if self.val.len() > 10 {
+			write!(f, "{:.10}...", self.val)
+		} else {
+			write!(f, "{}", self.val)
+		}
+	}
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ItemType {
+	// error occurred; value is text of error
+	Error,
+	// the value of a property parameter, can contain ^^, ^' or ^n
+	ParamValue,
+	// the value of a property, if the property is of type TEXT, the value can contain \\ , \; , \, , \n or \N
+	PropValue,
+	// the Property/Parameter Name
+	Id,
+	// an indicator for the start of a component
+	Begin,
+	// an indicator for the end of a component
+	End,
+	// the component name
+	CompName,
+}
+
 #[derive(Debug)]
-pub struct Lexer {
-	// documented for error messages
-	line: u32,
-	// the string being scanned
-	pub input: String,
+pub struct LineLexer {
+	//current line
+	pub line: (String, u32),
+
 	// current position in the input
 	pos: Pos,
 	// start position of this item
 	start: Pos,
 	// width of last rune read from input
 	width: Pos,
-	// channel of scanned items
-	//item_receiver: Receiver<Item>,
-	item_sender: SyncSender<Item>,
+
+	//next item to be emitted
+	emit: Option<Item>,
+
+	//the next state to run
+	state: State,
 }
 
-
-type StateFn = fn(&mut Lexer) -> State;
-
-enum State {
-	Next(StateFn),
-	Stop,
-}
-
-
-impl Lexer {
-	pub fn new(line: u32, input: String, item_sender: SyncSender<Item>) -> Self {
-		Lexer {
-			line,
-			input,
+impl LineLexer {
+	// lex creates a new scanner for the input string.
+	pub fn new(line: u32, input: String) -> Self {
+		LineLexer {
+			line:(input,line),
 			pos: 0,
 			start: 0,
 			width: 0,
-			item_sender,
+			emit:None,
+			state:Next(lex_prop_name),
 		}
 	}
 
 
+
+	pub fn next_item(&mut self) -> Option<Item> {
+		while let None=self.emit{
+			match self.state {
+				State::Next(sfn) => {
+					self.state = sfn(self);
+				},
+				State::Stop => break,
+			}
+		}
+		self.emit.take()
+	}
+
+	pub fn get_line(&self) ->(String,u32){
+		return (self.line.0.clone(),self.line.1)
+	}
+
 	fn next(&mut self) -> Rune {
-		if self.pos >= self.input.len() {
+		if self.pos >= self.line.0.len() {
 			self.width = 0;
 			Rune::EOF
-		} else if self.input.is_char_boundary(self.pos) {
-			//TODO chars() could panic if codepoint seems valid but isn't
-			//MAYBE does work if self.input is a lossyly decoded string (errors are replaced with 0FFFD)
-			//or MAYBE copy UTF8_CHAR_WIDTH from libcore/str/mod.rs
-
-			//make the choice between error and 0xFFFD available via the Lexer constructor
-			let rune = self.input[self.pos..].chars().next().unwrap();
+		} else if self.line.0.is_char_boundary(self.pos) {
+			let rune = self.line.0[self.pos..].chars().next().unwrap();
 			if rune == '\u{FFFD}' {
 				self.width = 0;
 				Rune::Invalid
@@ -73,8 +140,9 @@ impl Lexer {
 			}
 		} else {
 			//self.pos is not at a boundary, we may have jumped into an utf8-sequence
-			self.width = 0;
-			Rune::Invalid
+			unreachable!("LineLexer::next (line.rs:{}):Jumped into an utf8-sequence, this should not happen!\ninput:{:?}\npos:{}", line!(), self.line.0.as_bytes(),self.pos);
+			//self.width = 0;
+			//Rune::Invalid
 		}
 	}
 
@@ -87,31 +155,6 @@ impl Lexer {
 		let out = self.next();
 		self.backup();
 		out
-	}
-
-	fn emit(&mut self, i: ItemType) {
-		self.item_sender.send(
-			Item {
-				typ: i,
-				pos: self.start,
-				val: self.input[self.start..self.pos].to_string(),
-				line: self.line,
-			}
-		).unwrap();
-		self.start = self.pos;
-	}
-
-	fn emit_with_trimmed_quotes(&mut self, i: ItemType) {
-		let matcher: &[_] = &['"' as char];
-		self.item_sender.send(
-			Item {
-				typ: i,
-				pos: self.start,
-				val: self.input[self.start..self.pos].trim_matches(matcher).to_string(),
-				line: self.line,
-			}
-		).unwrap();
-		self.start = self.pos;
 	}
 
 	fn ignore(&mut self) {
@@ -149,48 +192,57 @@ impl Lexer {
 		//no character found anymore, last iteration also already backed up the pos pointer.
 	}
 
+	fn emit(&mut self, i: ItemType) {
+		self.emit=Some(
+			Item {
+				typ: i,
+				pos: self.start,
+				val: self.line.0[self.start..self.pos].to_string(),
+				line: self.line.1,
+			}
+		);
+		self.start = self.pos;
+	}
 
+	fn emit_with_trimmed_quotes(&mut self, i: ItemType) {
+		let matcher: &[_] = &['"' as char];
+		self.emit=Some(
+			Item {
+				typ: i,
+				pos: self.start,
+				val: self.line.0[self.start..self.pos].trim_matches(matcher).to_string(),
+				line: self.line.1,
+			}
+		);
+		self.start = self.pos;
+	}
 	// errorf returns an error token and terminates the scan by passing
 	// back a Stop that will be the next state, closing the channel.
 	fn errorf(&mut self, errstr: &str) -> State {
-		match self.item_sender.send(
+		self.emit=Some(
 			Item {
 				typ: ItemType::Error,
 				pos: self.start,
 				val: errstr.to_string(),
-				line: self.line,
+				line: self.line.1,
 			}
-		){
-			Err(e)=>{
-				panic!(e.to_string())
-			},
-			Ok(())=>Stop,
-		}
+		);
+		Stop
 	}
 
-	// run runs the state machine for the lexer.
-	pub fn run(mut self) -> Self {
-		let mut state = Next(lex_prop_name);
-
-		while let Next(sfn) = state {
-			state=sfn(&mut self);
-		}
-		self
-		// l is dropped, l.item_sender is closed
-	}
 }
 
 // lexPropName scans until a colon or a semicolon
-fn lex_prop_name(l: &mut Lexer) -> State {
+fn lex_prop_name(l: &mut LineLexer) -> State {
 	l.accept_run(ALLOWED_PARAMETER_NAME_CHARS);
 	if l.pos == l.start {
 		return l.errorf("expected one or more alphanumerical characters or '-'");
 	}
-	if l.input[l.start..l.pos].to_uppercase() == COMP_BEGIN_S {
+	if l.line.0[l.start..l.pos].to_uppercase() == COMP_BEGIN_S {
 		l.emit(ItemType::Begin);
 		return Next(lex_before_comp_name);
 	}
-	if l.input[l.start..l.pos].to_uppercase() == COMP_END_S {
+	if l.line.0[l.start..l.pos].to_uppercase() == COMP_END_S {
 		l.emit(ItemType::End);
 		return Next(lex_before_comp_name);
 	}
@@ -199,7 +251,7 @@ fn lex_prop_name(l: &mut Lexer) -> State {
 	return Next(lex_before_value);
 }
 
-fn lex_before_comp_name(l: &mut Lexer) -> State {
+fn lex_before_comp_name(l: &mut LineLexer) -> State {
 	if l.accept(":") {
 		l.ignore();
 		return Next(lex_comp_name);
@@ -208,7 +260,7 @@ fn lex_before_comp_name(l: &mut Lexer) -> State {
 	return l.errorf("expected ':'");
 }
 
-fn lex_comp_name(l: &mut Lexer) -> State {
+fn lex_comp_name(l: &mut LineLexer) -> State {
 	if let Rune::EOF = l.peek() {
 		return l.errorf("component name can't have length 0");
 	}
@@ -225,7 +277,7 @@ fn lex_comp_name(l: &mut Lexer) -> State {
 	}
 }
 
-fn lex_before_value(l: &mut Lexer) -> State {
+fn lex_before_value(l: &mut LineLexer) -> State {
 	if l.accept(":") {
 		l.ignore();
 		return Next(lex_value);
@@ -237,12 +289,16 @@ fn lex_before_value(l: &mut Lexer) -> State {
 	return l.errorf("expected ':' or ';'");
 }
 
-fn lex_param_name(l: &mut Lexer) -> State {
+fn lex_param_name(l: &mut LineLexer) -> State {
 	l.accept_run(ALLOWED_PARAMETER_NAME_CHARS);
 	if l.pos == l.start {
 		return l.errorf("name must not be empty");
 	}
 	l.emit(ItemType::Id);
+	Next(lex_before_param_value)
+}
+
+fn lex_before_param_value(l: &mut LineLexer) -> State {
 	if l.accept("=") {
 		l.ignore();
 		return Next(lex_param_value);
@@ -250,7 +306,7 @@ fn lex_param_name(l: &mut Lexer) -> State {
 	return l.errorf("expected '='");
 }
 
-fn lex_param_value(l: &mut Lexer) -> State {
+fn lex_param_value(l: &mut LineLexer) -> State {
 	if l.accept("\"") {
 		return Next(lex_param_q_value);
 	}
@@ -259,7 +315,7 @@ fn lex_param_value(l: &mut Lexer) -> State {
 	return Next(lex_after_param_value);
 }
 
-fn lex_param_q_value(l: &mut Lexer) -> State {
+fn lex_param_q_value(l: &mut LineLexer) -> State {
 	l.accept_run_unless("\"");
 
 	if let Rune::Valid('"') = l.next() {
@@ -270,7 +326,7 @@ fn lex_param_q_value(l: &mut Lexer) -> State {
 	return l.errorf("expected '\"' or other non-control-characters");
 }
 
-fn lex_after_param_value(l: &mut Lexer) -> State {
+fn lex_after_param_value(l: &mut LineLexer) -> State {
 	if l.accept(":") {
 		l.ignore(); //l.emit(itemColon)
 		return Next(lex_value);
@@ -286,7 +342,7 @@ fn lex_after_param_value(l: &mut Lexer) -> State {
 	return l.errorf("expected ',', ':' or ';'");
 }
 
-fn lex_value(l: &mut Lexer) -> State {
+fn lex_value(l: &mut LineLexer) -> State {
 	if let Rune::EOF = l.peek() {
 		return l.errorf("property value can't have length 0");
 	}
@@ -297,5 +353,3 @@ fn lex_value(l: &mut Lexer) -> State {
 	}
 	return l.errorf("unexpected character, expected eol");
 }
-
-

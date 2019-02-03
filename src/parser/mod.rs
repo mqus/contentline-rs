@@ -7,22 +7,20 @@ use std::io::Split;
 use std::iter::Peekable;
 
 use crate::{Component, Parameters, Property};
-pub use crate::parser::lexer::{ALLOWED_PARAMETER_NAME_CHARS,COMP_BEGIN_S,COMP_END_S};
-use crate::parser::lexer::Item;
-use crate::parser::lexer::ItemType;
-use crate::parser::lexer::LexerError;
-use crate::parser::lexer::LexerHandle;
-
+use crate::parser::errors::LexerError;
+pub use crate::parser::line_lexer::{ALLOWED_PARAMETER_NAME_CHARS, COMP_BEGIN_S, COMP_END_S};
+use crate::parser::line_lexer::{Item,ItemType,LineLexer};
 #[cfg(test)]
-pub use crate::parser::tests::{c,c2,p,pm,p2};
+pub use crate::parser::tests::{c, c2, p, p2, pm};
 
-mod lexer;
+mod line_lexer;
+mod errors;
 pub mod rfc6868;
 #[cfg(test)]
 mod tests;
 
 pub struct Parser<R: BufRead> {
-	lexer: Option<LexerHandle>,
+	lexer: Option<LineLexer>,
 	line: u32,
 	next_line: u32,
 	r: Peekable<Split<R>>,
@@ -46,7 +44,7 @@ impl<R> Parser<R> where R: BufRead {
 	}
 
 
-	pub fn next_component(&mut self) -> Result<Option<Component>,Box<dyn Error>>{
+	pub fn next_component(&mut self) -> Result<Option<Component>, Box<dyn Error>> {
 		match self.get_next_item()? {
 			None => Ok(None), //EOF
 			Some(i) => match i.typ {
@@ -61,7 +59,6 @@ impl<R> Parser<R> where R: BufRead {
 			}
 		}
 	}
-
 
 
 	//parseComponent parses the Component for which itemBegin was already read.
@@ -110,7 +107,6 @@ impl<R> Parser<R> where R: BufRead {
 			}
 			None => unreachable!("unexpected EOF in parser::parse_component"),
 		}
-
 	}
 
 	//parseProperty parses the next Property while already having parsed the Property name.
@@ -145,7 +141,7 @@ impl<R> Parser<R> where R: BufRead {
 		if let None = self.lexer {
 			self.line = self.next_line;
 			if let Some(line) = self.read_unfolded_line()? {
-				self.lexer = Some(lexer::new(self.line, String::from_utf8(line)?));
+				self.lexer = Some(LineLexer::new(self.line, String::from_utf8(line)?));
 			} else {
 				//Reached EOF
 				return Ok(None);
@@ -153,7 +149,7 @@ impl<R> Parser<R> where R: BufRead {
 		}
 
 		let mut i;
-		match self.lexer.as_ref().unwrap().next_item() {
+		match self.lexer.as_mut().unwrap().next_item() {
 			None => {
 				//unexpected Tokenstream EOF, should not happen (because lexer throws an error because that happens)
 				unreachable!("unexpected token stream EOF in parser::get_next_item");
@@ -225,9 +221,9 @@ impl<R> Iterator for Parser<R>
 	type Item = Result<Component, Box<dyn Error>>;
 
 	fn next(&mut self) -> Option<Self::Item> {
-		match self.next_component(){
-			Ok(None) =>None,
-			Ok(Some(c))=>Some(Ok(c)),
+		match self.next_component() {
+			Ok(None) => None,
+			Ok(Some(c)) => Some(Ok(c)),
 			Err(e) => Some(Err(e)),
 		}
 	}
