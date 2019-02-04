@@ -3,6 +3,8 @@
 use crate::Component;
 use std::io::Cursor;
 use crate::{Parser,Property,Parameters};
+use std::fmt::Debug;
+use std::error::Error;
 
 pub fn test_parse(input:&str, expected:Component){
 	test_parse_bytes(input.as_bytes(), expected);
@@ -89,15 +91,17 @@ pub fn test_parse_error(input:&str, error:&str){
 	let x=Cursor::new(input);
 	let mut p=Parser::new(x);
 
-	match p.next_component(){
-		Err(e) => {
-			//check if error is the expected error
-			if !e.to_string().contains(error){
-				panic!("Didn't get the expected error, got: {:?}\n\nObject:\t{:?}", e.to_string(),e);
-			}
-		},
-		Ok(c) => panic!("Expected an error, but got:{:?}",c),
-	};
+
+	expect_err(p.next_component(),error);
+
 	//drain the parser. This should not panic!
 	for _obj in p {};
+}
+
+pub fn expect_err<R:Debug, E:Error>(res:Result<R,E>, msg:&str) {
+	match &res{
+		Err(e) if e.to_string().contains(msg) =>(),
+		Err(e) => panic!("Didn't get the expected error, got: {:?}\n\nObject:\t{:?}", e.to_string(),e),
+		Ok(c) => panic!("Expected an error, but got:{:?}",c)
+	}
 }

@@ -14,6 +14,9 @@ mod encoder;
 mod encoder_tests;
 
 #[cfg(test)]
+mod api_tests;
+
+#[cfg(test)]
 mod test_helper;
 
 
@@ -70,8 +73,6 @@ impl Property {
 	pub fn get_param_value(&self, name: &str) -> Option<&Vec<String>> {
 		self.parameters.get(name)
 	}
-
-	//MAYBE implement more API
 }
 
 #[derive(Debug)]
@@ -163,7 +164,7 @@ impl StdError for InvalidNameError {}
 
 impl fmt::Display for InvalidNameError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		write!(f, "{} name is invalid:{} Character '{}' is not allowed.", self.typ, self.name, self.violation)
+		write!(f, "{} name \"{}\" is invalid: character '{}' is not allowed", self.typ, self.name, self.violation)
 	}
 }
 
@@ -178,9 +179,9 @@ impl fmt::Display for NameType {
 	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
 		use NameType::*;
 		match self {
-			Component => write!(f, "Component"),
-			Property => write!(f, "Property"),
-			Parameter => write!(f, "Parameter"),
+			Component => write!(f, "component"),
+			Property => write!(f, "property"),
+			Parameter => write!(f, "parameter"),
 		}
 	}
 }
