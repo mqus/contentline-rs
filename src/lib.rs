@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::error::Error;
+use std::error::Error as StdError;
 use std::fmt;
 
 pub use crate::encode::Encoder;
-pub use crate::parser::{ParseError, Parser, rfc6868};
+pub use crate::parser::{Parser, rfc6868};
+pub use crate::parser::Error;
 use crate::encode::ComponentEncode;
 
 mod parser;
@@ -158,7 +159,7 @@ pub struct InvalidNameError {
 	name: String,
 }
 
-impl Error for InvalidNameError {}
+impl StdError for InvalidNameError {}
 
 impl fmt::Display for InvalidNameError {
 	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {

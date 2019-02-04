@@ -93,7 +93,7 @@ pub fn test_parse_error(input:&str, error:&str){
 		Err(e) => {
 			//check if error is the expected error
 			if !e.to_string().contains(error){
-				panic!("Didn't get the expected error, got:\n{:?}\nDescription: {:?}",e, e.to_string());
+				panic!("Didn't get the expected error, got: {:?}\n\nObject:\t{:?}", e.to_string(),e);
 			}
 		},
 		Ok(c) => panic!("Expected an error, but got:{:?}",c),

@@ -133,6 +133,26 @@ fn parse_cornercase_fold(){
 
 }
 
+#[test]
+fn parse_no_component1(){
+	let input="";
+	let x=Cursor::new(input.as_bytes());
+	let mut p=Parser::new(x);
+	if let Some(x) = p.next_component().unwrap(){
+		panic!("expected EOF, but got:\n{:#?}",x)
+	}
+}
+
+#[test]//This shouldn't really work but is an unavoidable quirk because "<...xyz>\n" is indistinguishable from "<...xyz>" (without \n)
+fn parse_no_component2(){
+	let input="\n";
+	let x=Cursor::new(input.as_bytes());
+	let mut p=Parser::new(x);
+	if let Some(x) = p.next_component().unwrap(){
+		panic!("expected EOF, but got:\n{:#?}",x)
+	}
+}
+
 
 //TESTS: EXPECTED ERRORS /TODO
 #[test]
@@ -142,17 +162,17 @@ fn empty_line(){
 
 #[test]
 fn wrong_linebreak(){
-	test_parse_error("\n", "expected one or more alphanumerical characters or '-'");
+	test_parse_error("\n\n", "line 1: expected CR ('\\r') before LF in empty line");
 }
 
 #[test]
 fn wrong_comp_begin(){
-	test_parse_error("BEG\r\n", "unexpected identifier, expected BEGIN");
+	test_parse_error("BEG\r\n", "line 1: \texpected BEGIN:  >BEG< \n");
 }
 
 #[test]
 fn wrong_comp_begin2(){
-	test_parse_error("BEG:\r\n", "unexpected identifier, expected BEGIN");
+	test_parse_error("BEG:\r\n", "line 1: \texpected BEGIN:  >BEG< :\n");
 }
 
 #[test]

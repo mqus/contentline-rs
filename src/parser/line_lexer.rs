@@ -40,7 +40,6 @@ pub struct Item {
 	pub typ: ItemType,
 	pub pos: Pos,
 	pub val: String,
-	pub line: u32,
 }
 
 impl fmt::Display for Item {
@@ -197,7 +196,6 @@ impl LineLexer {
 				typ: i,
 				pos: self.start,
 				val: self.line.0[self.start..self.pos].to_string(),
-				line: self.line.1,
 			}
 		);
 		self.start = self.pos;
@@ -210,7 +208,6 @@ impl LineLexer {
 				typ: i,
 				pos: self.start,
 				val: self.line.0[self.start..self.pos].trim_matches(matcher).to_string(),
-				line: self.line.1,
 			}
 		);
 		self.start = self.pos;
@@ -223,7 +220,6 @@ impl LineLexer {
 				typ: ItemType::Error,
 				pos: self.start,
 				val: errstr.to_string(),
-				line: self.line.1,
 			}
 		);
 		Stop

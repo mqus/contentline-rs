@@ -1,13 +1,9 @@
-use core::fmt;
-use std::error::Error;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Read;
-use std::io::Split;
-use std::iter::Peekable;
+use std::io::{BufRead,BufReader,Read,Split};
+
+use core::iter::Peekable;
 
 use crate::{Component, Parameters, Property};
-use crate::parser::errors::LexerError;
+pub use crate::parser::errors::Error;
 use crate::parser::line_lexer::{Item,ItemType,LineLexer};
 
 
@@ -20,7 +16,7 @@ mod tests;
 
 pub struct Parser<R: BufRead> {
 	lexer: Option<LineLexer>,
-	line: u32,
+	line: (String,u32),
 	next_line: u32,
 	r: Peekable<Split<R>>,
 }
@@ -36,38 +32,33 @@ impl<R> Parser<R> where R: BufRead {
 	pub fn new(input: R) -> Self {
 		Parser {
 			lexer: None,
-			line: 0,
+			line: (String::new(),0),
 			next_line: 1,
 			r: input.split(b'\n').peekable(),
 		}
 	}
 
 
-	pub fn next_component(&mut self) -> Result<Option<Component>, Box<dyn Error>> {
+	pub fn next_component(&mut self) -> Result<Option<Component>, Error> {
 		match self.get_next_item()? {
 			None => Ok(None), //EOF
 			Some(i) => match i.typ {
 				ItemType::Begin => Ok(Some(self.parse_component()?)),
-				ItemType::End => Err(Box::new(ParseError {
-					msg: format!("unexpected END , expected BEGIN")
-				})),
-				ItemType::Id => Err(Box::new(ParseError {
-					msg: format!("unexpected identifier, expected BEGIN")
-				})),
-				_ => unreachable!("parser::next_component: unexpected item type '{:?}' in line {}: {}", i.typ, self.line, i.val)
+				ItemType::End | ItemType::Id  => Err(Error::new(i,"expected BEGIN".to_string(),self.line.clone())),
+				_ => unreachable!("parser::next_component: unexpected item type '{:?}' in line {}: {}", i.typ, self.line.1, i.val)
 			}
 		}
 	}
 
 
 	//parseComponent parses the Component for which itemBegin was already read.
-	fn parse_component(&mut self) -> Result<Component, Box<dyn Error>> {
+	fn parse_component(&mut self) -> Result<Component, Error> {
 		let name = match self.get_next_item()? {
 			Some(i) =>
 				if i.typ == ItemType::CompName {
 					i.val
 				} else {
-					unreachable!("parser::parse_component: unexpected item type '{:?}' in line {}: {}", i.typ, self.line, i.val)
+					unreachable!("parser::parse_component: unexpected item type '{:?}' in line {}: {}", i.typ, self.line.1, i.val)
 				},
 			None => unreachable!("unexpected EOF in parser::parse_component"),
 		};
@@ -79,9 +70,7 @@ impl<R> Parser<R> where R: BufRead {
 		};
 		loop {
 			match self.get_next_item()? {
-				None => return Err(Box::new(ParseError {
-					msg: format!("unexpected end of input, expected END:{}", out.name)
-				})),
+				None => return Err(Error::eof_error(format!("unexpected end of input, expected END:{}", out.name),self.line.1)),
 				Some(i) => match i.typ {
 					ItemType::Begin => out.sub_components.push(self.parse_component()?),
 					ItemType::Id => out.properties.push(self.parse_property(i.val)?),
@@ -96,9 +85,7 @@ impl<R> Parser<R> where R: BufRead {
 					if item.val == out.name {
 						return Ok(out);
 					} else {
-						return Err(Box::new(ParseError {
-							msg: format!("expected END:{}, got END:{}", out.name, item.val)
-						}));
+						return Err(Error::new(item, format!("expected END:{}", out.name), self.line.clone()));
 					}
 				} else {
 					unreachable!("unexpected item type in parser::parse_component")
@@ -109,7 +96,7 @@ impl<R> Parser<R> where R: BufRead {
 	}
 
 	//parseProperty parses the next Property while already having parsed the Property name.
-	fn parse_property(&mut self, name: String) -> Result<Property, Box<dyn Error>> {
+	fn parse_property(&mut self, name: String) -> Result<Property, Error> {
 		let mut out = Property {
 			name,
 			value: "".to_string(),
@@ -136,11 +123,12 @@ impl<R> Parser<R> where R: BufRead {
 	//getNextItem returns the next lexer item, feeding (unfolded) lines into the lexer if neccessary.
 	// It also converts identifiers (itemCompName, itemID) into upper case, errors encountered by the
 	// lexer into 'error' values and property parameter values into their original value (without escaped characters).
-	fn get_next_item(&mut self) -> Result<Option<Item>, Box<dyn Error>> {
+	fn get_next_item(&mut self) -> Result<Option<Item>, Error> {
 		if let None = self.lexer {
-			self.line = self.next_line;
+			self.line.1 = self.next_line;
 			if let Some(line) = self.read_unfolded_line()? {
-				self.lexer = Some(LineLexer::new(self.line, String::from_utf8(line)?));
+				self.line.0 = String::from_utf8(line)?;
+				self.lexer = Some(LineLexer::new(self.line.1, self.line.0.clone()));
 			} else {
 				//Reached EOF
 				return Ok(None);
@@ -160,9 +148,7 @@ impl<R> Parser<R> where R: BufRead {
 
 		match i.typ {
 			ItemType::Error => {
-				return Err(Box::new(
-					LexerError::new(self.lexer.take().unwrap(), i, "", self.line)
-				));
+				return Err(Error::new(i,  "".to_string(), self.line.clone()));
 			}
 			ItemType::CompName => {
 				i.val = i.val.to_uppercase();
@@ -176,7 +162,7 @@ impl<R> Parser<R> where R: BufRead {
 		Ok(Some(i))
 	}
 
-	fn read_unfolded_line(&mut self) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+	fn read_unfolded_line(&mut self) -> Result<Option<Vec<u8>>, Error> {
 		let mut buf;
 
 		match self.r.next() {
@@ -185,14 +171,20 @@ impl<R> Parser<R> where R: BufRead {
 		}
 		// increment line counter
 		self.next_line += 1;
-
-		// all lines have to end with a \r\n.
+		// all lines have to end with a \r\n. Empty lines without a \r\n are also not allowed. empty lines at the end return EOF (represented as Ok(None)
 		if let Some(byte) = buf.pop() {
 			if byte != b'\r' {
-				return Err(Box::new(ParseError {
-					msg: format!("Expected CRLF:{1}, >{0:?}<", buf[buf.len() - 1] as char, String::from_utf8(buf)?)
-				}));
+				buf.push(byte);
+				return Err(Error::crlf_error(buf, self.line.1, self.r.peek().is_some()));
 			}
+		} else if self.r.peek().is_some() {
+			//there are some lines following and this line contains only "\n" => is not allowed!
+			//buf is empty (otherwise a pop() would have given Some(_), not None
+			return Err(Error::crlf_error( buf, self.line.1, self.r.peek().is_some()));
+		} else {
+
+			//this is the last line (after \r\n) and it is empty.
+			return Ok(None);
 		}
 
 		// peek at next line. If next line begins with a space or HTAB (\t), 'unfold' it.
@@ -200,8 +192,10 @@ impl<R> Parser<R> where R: BufRead {
 		// if there is nothing to read or the next line begins with another character, don't unfold.
 		let append = match self.r.peek() {
 			Some(x) => match x {
-				Ok(next_line) => next_line[0] == b' ' || next_line[0] == b'\t',
 				Err(_) => true,
+				Ok(next_line) if next_line.len()>0 => next_line[0] == b' ' || next_line[0] == b'\t',
+				//there is a next line but it is empty.
+				_ =>false,
 			},
 			None => false,
 		};
@@ -217,7 +211,7 @@ impl<R> Parser<R> where R: BufRead {
 
 impl<R> Iterator for Parser<R>
 	where R: BufRead {
-	type Item = Result<Component, Box<dyn Error>>;
+	type Item = Result<Component, Error>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		match self.next_component() {
@@ -225,20 +219,6 @@ impl<R> Iterator for Parser<R>
 			Ok(Some(c)) => Some(Ok(c)),
 			Err(e) => Some(Err(e)),
 		}
-	}
-}
-
-
-#[derive(Debug)]
-pub struct ParseError {
-	msg: String,
-}
-
-impl Error for ParseError {}
-
-impl fmt::Display for ParseError {
-	fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		write!(f, "{}", self.msg.as_str())
 	}
 }
 
