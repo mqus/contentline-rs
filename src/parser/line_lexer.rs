@@ -257,7 +257,7 @@ fn lex_before_comp_name(l: &mut LineLexer) -> State {
 
 fn lex_comp_name(l: &mut LineLexer) -> State {
 	if let Rune::EOF = l.peek() {
-		return l.errorf("component name can't have length 0");
+		return l.errorf("component name mustn't have length 0");
 	}
 	l.accept_run(ALLOWED_PARAMETER_NAME_CHARS);
 	match l.peek() {
@@ -287,7 +287,7 @@ fn lex_before_value(l: &mut LineLexer) -> State {
 fn lex_param_name(l: &mut LineLexer) -> State {
 	l.accept_run(ALLOWED_PARAMETER_NAME_CHARS);
 	if l.pos == l.start {
-		return l.errorf("name must not be empty");
+		return l.errorf("parameter name must not be empty");
 	}
 	l.emit(ItemType::Id);
 	Next(lex_before_param_value)

@@ -98,4 +98,6 @@ pub fn test_parse_error(input:&str, error:&str){
 		},
 		Ok(c) => panic!("Expected an error, but got:{:?}",c),
 	};
+	//drain the parser. This should not panic!
+	for _obj in p {};
 }

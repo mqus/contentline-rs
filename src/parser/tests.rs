@@ -166,6 +166,11 @@ fn wrong_linebreak(){
 }
 
 #[test]
+fn wrong_line_begin(){
+	test_parse_error(":\r\n", "line 1: \texpected one or more alphanumerical characters or '-':  >:<\n");
+}
+
+#[test]
 fn wrong_comp_begin(){
 	test_parse_error("BEG\r\n", "line 1: \texpected BEGIN:  >BEG< \n");
 }
@@ -180,10 +185,86 @@ fn wrong_comp_begin3(){
 	test_parse_error("BEGIN\r\n", "1: \texpected ':': BEGIN<HERE>\n");
 }
 
+#[test]
+fn wrong_comp_begin4(){
+	test_parse_error("BEGIN:\r\n", "line 1: \tcomponent name mustn't have length 0: BEGIN:<HERE>\n");
+}
+
+#[test]
+fn wrong_comp_begin5(){
+	test_parse_error("BEGIN:HI\n", "line 1: \texpected CR ('\\r') before LF: BEGIN:HI<HERE>\n");
+}
+
+#[test]
+fn wrong_comp_name(){
+	test_parse_error("BEGIN:HI\u{2764}\r\n", "line 1: \tunexpected character, expected eol, alphanumeric or '-': BEGIN:HI >❤< \n");
+}
+
 //wrong prop id
+#[test]
+fn wrong_prop_begin1(){
+	test_parse_error("BEGIN:co\r\n:\r\n", "line 2: \texpected one or more alphanumerical characters or '-':  >:<\n");
+}
+
+#[test]
+fn wrong_prop_begin2(){
+	test_parse_error("BEGIN:co\r\nw :\r\n", "line 2: \texpected ':' or ';': w > < :\n");
+}
+
+#[test]
+fn wrong_prop_begin3(){
+	test_parse_error("BEGIN:co\r\nwas:\r\n", "line 2: \tproperty value can\'t have length 0: was:<HERE>\n");
+}
+
+#[test]
+fn wrong_prop_param(){
+	test_parse_error("BEGIN:co\r\nwas;\r\n", "line 2: \tparameter name must not be empty: was;<HERE>\n");
+}
+
+#[test]
+fn wrong_prop_param2(){
+	test_parse_error("BEGIN:co\r\nwas;x\r\n", "line 2: \texpected \'=\': was;x<HERE>\n");
+}
+
+#[test]
+fn wrong_prop_param3(){
+	test_parse_error("BEGIN:co\r\nwas; x\r\n", "line 2: \tparameter name must not be empty: was; > < x\n");
+}
+
+#[test]
+fn wrong_prop_param4(){
+	test_parse_error("BEGIN:co\r\nwas;x =\r\n", "line 2: \texpected '=': was;x > < =\n");
+}
+
+#[test]
+fn wrong_prop_param5(){
+	test_parse_error("BEGIN:co\r\nwas;=x\r\n", "line 2: \tparameter name must not be empty: was; >=< x\n");
+}
+
+#[test]
+fn utf8_1(){
+	let st="BEGIN:co\r\nwas;=x";
+	let mut data=vec![];
+	data.extend_from_slice(st.as_bytes());
+	data.push(0x82);
+	data.push(b'\r');
+	data.push(b'\n');
+	let p = Parser::new(Cursor::new(data.as_slice()));
+	for obj in p{
+		match obj{
+			Err(e) => assert_eq!(e.to_string(),"invalid utf-8 sequence of 1 bytes from index 6"),
+			Ok(_) => {},
+		}
+	};
+}
 
 //wrong param id
 
-//wrong newlines
+//an example which was panicking on a fuzz
+#[test]
+fn fuzzing_example_1(){
+	let data=vec![0x0a,0xec,0x0a,0x0d];
+	let p = Parser::new(Cursor::new(data.as_slice()));
+	for _obj in p{};
+}
 
-//

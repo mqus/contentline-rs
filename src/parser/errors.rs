@@ -68,7 +68,9 @@ impl fmt::Display for Error {
 			}
 			Malformed(msg, val, pos, line) => {
 				if msg.len() == 0 {
-					error_msg(f, line.clone(), val.as_str(), *pos, pos + 1)
+					//take length of char at pos or 0
+					let x=line.0[*pos..].chars().next().map_or(0,|c|c.len_utf8());
+					error_msg(f, line.clone(), val.as_str(), *pos, pos + x)
 				} else {
 					error_msg(f, line.clone(), msg.as_str(), *pos, pos + val.len())
 				}
@@ -97,7 +99,7 @@ fn error_msg(f: &mut fmt::Formatter, line: (String, u32), msg: &str, pos1: usize
 	} else {
 		"".to_string()
 	};
-	let len = pos2 - pos1;
+	let len = pos2-pos1;
 
 	match suffix.len() {
 		0 => writeln!(f, "line {}: \t{}: {}<HERE>", line.1, msg, prefix),

@@ -40,6 +40,7 @@ impl<R> Parser<R> where R: BufRead {
 
 
 	pub fn next_component(&mut self) -> Result<Option<Component>, Error> {
+		self.lexer=None;
 		match self.get_next_item()? {
 			None => Ok(None), //EOF
 			Some(i) => match i.typ {

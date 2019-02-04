@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::fmt;
 
-pub use crate::encode::Encoder;
+pub use crate::encoder::Encoder;
 pub use crate::parser::{Parser, rfc6868};
 pub use crate::parser::Error;
-use crate::encode::ComponentEncode;
+use crate::encoder::ComponentEncode;
 
 mod parser;
-mod encode;
+mod encoder;
 
 #[cfg(test)]
-mod encode_tests;
+mod encoder_tests;
 
 #[cfg(test)]
 mod test_helper;
