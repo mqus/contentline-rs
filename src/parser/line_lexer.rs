@@ -75,7 +75,7 @@ pub enum ItemType {
 #[derive(Debug)]
 pub struct LineLexer {
 	//current line
-	pub line: (String, u32),
+	pub line: String,
 
 	// current position in the input
 	pos: Pos,
@@ -93,9 +93,9 @@ pub struct LineLexer {
 
 impl LineLexer {
 	// lex creates a new scanner for the input string.
-	pub fn new(line: u32, input: String) -> Self {
+	pub fn new(input: String) -> Self {
 		LineLexer {
-			line:(input,line),
+			line:input,
 			pos: 0,
 			start: 0,
 			width: 0,
@@ -118,16 +118,12 @@ impl LineLexer {
 		self.emit.take()
 	}
 
-	pub fn get_line(&self) ->(String,u32){
-		return (self.line.0.clone(),self.line.1)
-	}
-
 	fn next(&mut self) -> Rune {
-		if self.pos >= self.line.0.len() {
+		if self.pos >= self.line.len() {
 			self.width = 0;
 			Rune::EOF
-		} else if self.line.0.is_char_boundary(self.pos) {
-			let rune = self.line.0[self.pos..].chars().next().unwrap();
+		} else if self.line.is_char_boundary(self.pos) {
+			let rune = self.line[self.pos..].chars().next().unwrap();
 			if rune == '\u{FFFD}' {
 				self.width = 0;
 				Rune::Invalid
@@ -138,7 +134,7 @@ impl LineLexer {
 			}
 		} else {
 			//self.pos is not at a boundary, we may have jumped into an utf8-sequence
-			unreachable!("LineLexer::next (line.rs:{}):Jumped into an utf8-sequence, this should not happen!\ninput:{:?}\npos:{}", line!(), self.line.0.as_bytes(),self.pos);
+			unreachable!("LineLexer::next (line.rs:{}):Jumped into an utf8-sequence, this should not happen!\ninput:{:?}\npos:{}", line!(), self.line.as_bytes(),self.pos);
 			//self.width = 0;
 			//Rune::Invalid
 		}
@@ -195,19 +191,19 @@ impl LineLexer {
 			Item {
 				typ: i,
 				pos: self.start,
-				val: self.line.0[self.start..self.pos].to_string(),
+				val: self.line[self.start..self.pos].to_string(),
 			}
 		);
 		self.start = self.pos;
 	}
 
 	fn emit_with_trimmed_quotes(&mut self, i: ItemType) {
-		let matcher: &[_] = &['"' as char];
+		let matcher: &[_] = &['"'];
 		self.emit=Some(
 			Item {
 				typ: i,
 				pos: self.start,
-				val: self.line.0[self.start..self.pos].trim_matches(matcher).to_string(),
+				val: self.line[self.start..self.pos].trim_matches(matcher).to_string(),
 			}
 		);
 		self.start = self.pos;
@@ -233,17 +229,17 @@ fn lex_prop_name(l: &mut LineLexer) -> State {
 	if l.pos == l.start {
 		return l.errorf("expected one or more alphanumerical characters or '-'");
 	}
-	if l.line.0[l.start..l.pos].to_uppercase() == COMP_BEGIN_S {
+	if l.line[l.start..l.pos].to_uppercase() == COMP_BEGIN_S {
 		l.emit(ItemType::Begin);
 		return Next(lex_before_comp_name);
 	}
-	if l.line.0[l.start..l.pos].to_uppercase() == COMP_END_S {
+	if l.line[l.start..l.pos].to_uppercase() == COMP_END_S {
 		l.emit(ItemType::End);
 		return Next(lex_before_comp_name);
 	}
 
 	l.emit(ItemType::Id);
-	return Next(lex_before_value);
+	Next(lex_before_value)
 }
 
 fn lex_before_comp_name(l: &mut LineLexer) -> State {
@@ -252,7 +248,7 @@ fn lex_before_comp_name(l: &mut LineLexer) -> State {
 		return Next(lex_comp_name);
 	}
 
-	return l.errorf("expected ':'");
+	l.errorf("expected ':'")
 }
 
 fn lex_comp_name(l: &mut LineLexer) -> State {
@@ -267,7 +263,7 @@ fn lex_comp_name(l: &mut LineLexer) -> State {
 		}
 		_ => {
 			l.ignore();
-			return l.errorf("unexpected character, expected eol, alphanumeric or '-'");
+			l.errorf("unexpected character, expected eol, alphanumeric or '-'")
 		}
 	}
 }
@@ -281,7 +277,7 @@ fn lex_before_value(l: &mut LineLexer) -> State {
 		l.ignore();
 		return Next(lex_param_name);
 	}
-	return l.errorf("expected ':' or ';'");
+	l.errorf("expected ':' or ';'")
 }
 
 fn lex_param_name(l: &mut LineLexer) -> State {
@@ -298,7 +294,7 @@ fn lex_before_param_value(l: &mut LineLexer) -> State {
 		l.ignore();
 		return Next(lex_param_value);
 	}
-	return l.errorf("expected '='");
+	l.errorf("expected '='")
 }
 
 fn lex_param_value(l: &mut LineLexer) -> State {
@@ -307,7 +303,7 @@ fn lex_param_value(l: &mut LineLexer) -> State {
 	}
 	l.accept_run_unless("\",;:");
 	l.emit(ItemType::ParamValue);
-	return Next(lex_after_param_value);
+	Next(lex_after_param_value)
 }
 
 fn lex_param_q_value(l: &mut LineLexer) -> State {
@@ -318,7 +314,7 @@ fn lex_param_q_value(l: &mut LineLexer) -> State {
 		return Next(lex_after_param_value);
 	}
 
-	return l.errorf("expected '\"' or other non-control-characters");
+	l.errorf("expected '\"' or other non-control-characters")
 }
 
 fn lex_after_param_value(l: &mut LineLexer) -> State {
@@ -334,7 +330,7 @@ fn lex_after_param_value(l: &mut LineLexer) -> State {
 		l.ignore(); //l.emit(itemComma)
 		return Next(lex_param_value);
 	}
-	return l.errorf("expected ',', ':' or ';'");
+	l.errorf("expected ',', ':' or ';'")
 }
 
 fn lex_value(l: &mut LineLexer) -> State {
@@ -346,5 +342,5 @@ fn lex_value(l: &mut LineLexer) -> State {
 		l.emit(ItemType::PropValue);
 		return Stop;
 	}
-	return l.errorf("unexpected character, expected eol");
+	l.errorf("unexpected character, expected eol")
 }

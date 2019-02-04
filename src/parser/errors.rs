@@ -57,7 +57,7 @@ impl fmt::Display for Error {
 			Io(e) => (e as &Display).fmt(f),
 			Utf8(e) => (e as &Display).fmt(f),
 			CRLF(buf, line, _) => {
-				if buf.len() == 0 {
+				if buf.is_empty() {
 					write!(f, "line {}: expected CR ('\\r') before LF in empty line", line)
 				} else {
 					match String::from_utf8(buf.clone()) {
@@ -67,7 +67,7 @@ impl fmt::Display for Error {
 				}
 			}
 			Malformed(msg, val, pos, line) => {
-				if msg.len() == 0 {
+				if msg.is_empty() {
 					//take length of char at pos or 0
 					let x=line.0[*pos..].chars().next().map_or(0,|c|c.len_utf8());
 					error_msg(f, line.clone(), val.as_str(), *pos, pos + x)

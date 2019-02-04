@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::fmt;
 
-use crate::encoder::ComponentEncode;
+pub use crate::encoder::ComponentEncode;
 pub use crate::encoder::Encoder;
 pub use crate::parser::{Parser, rfc6868};
 pub use crate::parser::Error;
+
 
 mod parser;
 mod encoder;
@@ -54,7 +55,7 @@ impl Property {
 			});
 		}
 
-		for (p_name, _) in &self.parameters {
+		for p_name in self.parameters.keys() {
 			if let Some(c) = is_valid_name(p_name) {
 				return Err(InvalidNameError {
 					typ: NameType::Parameter,

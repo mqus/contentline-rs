@@ -84,7 +84,7 @@ fn encode_property<W: Write>(writer: &mut W, property: &Property) -> Result<()> 
 
 	write_folded(writer, &mut buf, ":")?;
 	write_folded(writer, &mut buf, &property.value)?;
-	writer.write(buf.as_slice())?;
+	writer.write_all(buf.as_slice())?;
 	write!(writer, "\r\n")
 }
 

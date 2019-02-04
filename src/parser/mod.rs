@@ -84,9 +84,9 @@ impl<R> Parser<R> where R: BufRead {
 			Some(item) => {
 				if item.typ == ItemType::CompName {
 					if item.val == out.name {
-						return Ok(out);
+						Ok(out)
 					} else {
-						return Err(Error::new(item, format!("expected \"END:{}\"", out.name), self.line.clone()));
+						Err(Error::new(item, format!("expected \"END:{}\"", out.name), self.line.clone()))
 					}
 				} else {
 					unreachable!("unexpected item type in parser::parse_component")
@@ -102,7 +102,7 @@ impl<R> Parser<R> where R: BufRead {
 			name,
 			value: "".to_string(),
 			parameters: Parameters::new(),
-			old_line: Some(self.lexer.as_ref().unwrap().get_line()),
+			old_line: Some(self.line.clone()),
 		};
 		let mut last_param_name = "".to_string();
 		loop {
@@ -125,11 +125,11 @@ impl<R> Parser<R> where R: BufRead {
 	// It also converts identifiers (itemCompName, itemID) into upper case, errors encountered by the
 	// lexer into 'error' values and property parameter values into their original value (without escaped characters).
 	fn get_next_item(&mut self) -> Result<Option<Item>, Error> {
-		if let None = self.lexer {
+		if self.lexer.is_none() {
 			self.line.1 = self.next_line;
 			if let Some(line) = self.read_unfolded_line()? {
 				self.line.0 = String::from_utf8(line)?;
-				self.lexer = Some(LineLexer::new(self.line.1, self.line.0.clone()));
+				self.lexer = Some(LineLexer::new(self.line.0.clone()));
 			} else {
 				//Reached EOF
 				return Ok(None);
@@ -194,7 +194,7 @@ impl<R> Parser<R> where R: BufRead {
 		let append = match self.r.peek() {
 			Some(x) => match x {
 				Err(_) => true,
-				Ok(next_line) if next_line.len()>0 => next_line[0] == b' ' || next_line[0] == b'\t',
+				Ok(next_line) if !next_line.is_empty() => next_line[0] == b' ' || next_line[0] == b'\t',
 				//there is a next line but it is empty.
 				_ =>false,
 			},
