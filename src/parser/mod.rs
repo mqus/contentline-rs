@@ -71,7 +71,7 @@ impl<R> Parser<R> where R: BufRead {
 		};
 		loop {
 			match self.get_next_item()? {
-				None => return Err(Error::eof_error(format!("unexpected end of input, expected END:{}", out.name),self.line.1)),
+				None => return Err(Error::eof_error( out.name,self.line.1)),
 				Some(i) => match i.typ {
 					ItemType::Begin => out.sub_components.push(self.parse_component()?),
 					ItemType::Id => out.properties.push(self.parse_property(i.val)?),
@@ -86,7 +86,7 @@ impl<R> Parser<R> where R: BufRead {
 					if item.val == out.name {
 						return Ok(out);
 					} else {
-						return Err(Error::new(item, format!("expected END:{}", out.name), self.line.clone()));
+						return Err(Error::new(item, format!("expected \"END:{}\"", out.name), self.line.clone()));
 					}
 				} else {
 					unreachable!("unexpected item type in parser::parse_component")
@@ -109,7 +109,7 @@ impl<R> Parser<R> where R: BufRead {
 			match self.get_next_item()? {
 				Some(item) => match item.typ {
 					ItemType::Id => last_param_name = item.val,
-					ItemType::ParamValue => out.add_param(last_param_name.clone(), item.val),
+					ItemType::ParamValue => out.add_param(last_param_name.clone(), item.val).unwrap(),
 					ItemType::PropValue => {
 						out.value = item.val;
 						return Ok(out);

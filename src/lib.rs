@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::fmt;
 
+use crate::encoder::ComponentEncode;
 pub use crate::encoder::Encoder;
 pub use crate::parser::{Parser, rfc6868};
 pub use crate::parser::Error;
-use crate::encoder::ComponentEncode;
 
 mod parser;
 mod encoder;
@@ -21,6 +21,7 @@ mod test_helper;
 
 
 pub type Parameters = HashMap<String, Vec<String>>;
+
 const ALLOWED_PARAMETER_NAME_CHARS: &str = "-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const COMP_BEGIN_S: &str = "BEGIN";
 const COMP_END_S: &str = "END";
@@ -65,9 +66,17 @@ impl Property {
 		Ok(())
 	}
 
-	pub fn add_param(&mut self, name: String, value: String) {
+	pub fn add_param(&mut self, name: String, value: String) -> Result<(), InvalidNameError> {
+		if let Some(c) = is_valid_name(name.as_str()) {
+			return Err(InvalidNameError {
+				typ: NameType::Parameter,
+				violation: c,
+				name: name.clone(),
+			});
+		}
 		self.parameters.entry(name)
 				.or_default().push(value);
+		Ok(())
 	}
 
 	pub fn get_param_value(&self, name: &str) -> Option<&Vec<String>> {

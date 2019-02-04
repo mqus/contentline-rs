@@ -27,9 +27,9 @@ fn property() {
 fn property_complex() {
 	let mut c = c2("House");
 	let mut p = p2("Heating", "electric");
-	p.add_param("vendor".to_string(), "YourGas Co\"".to_string());
-	p.add_param("vendor".to_string(), "City:Energy LLC".to_string());
-	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string());
+	p.add_param("vendor".to_string(), "YourGas Co\"".to_string()).unwrap();
+	p.add_param("vendor".to_string(), "City:Energy LLC".to_string()).unwrap();
+	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string()).unwrap();
 	c.add_property(p);
 	let expected = "BEGIN:HOUSE\r\n".to_string() +
 			"HEATING;" +
@@ -51,7 +51,7 @@ fn property_complex() {
 fn utf8_folding() {
 	let mut c = c2("House");
 	let mut p = p2("Heating", "electric");
-	p.add_param("comment".to_string(), "This is a very long comment,11 monkeys hat to paint 200 \u{2764}s to write this thing.".to_string());
+	p.add_param("comment".to_string(), "This is a very long comment,11 monkeys hat to paint 200 \u{2764}s to write this thing.".to_string()).unwrap();
 	c.add_property(p);
 	let expected = "BEGIN:HOUSE\r\n".to_string() +
 			"HEATING;" +
@@ -65,14 +65,14 @@ fn utf8_folding() {
 fn nested_complex() {
 	let mut c = c2("House");
 	let mut p = p2("Heating", "electric");
-	p.add_param("vendor".to_string(), "YourGas Co\"".to_string());
-	p.add_param("vendor".to_string(), "City:Energy LLC".to_string());
-	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string());
+	p.add_param("vendor".to_string(), "YourGas Co\"".to_string()).unwrap();
+	p.add_param("vendor".to_string(), "City:Energy LLC".to_string()).unwrap();
+	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string()).unwrap();
 	c.add_property(p);
 	let mut p = p2("Heating2", "electric2");
-	p.add_param("vendor".to_string(), "YourGas Co\"".to_string());
-	p.add_param("vendor".to_string(), "City:Energy LLC".to_string());
-	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string());
+	p.add_param("vendor".to_string(), "YourGas Co\"".to_string()).unwrap();
+	p.add_param("vendor".to_string(), "City:Energy LLC".to_string()).unwrap();
+	p.add_param("comment".to_string(), "This is a very long comment,more than 2^3 monkeys hat to sit 20 hours to write this \n thing with linebreaks.".to_string()).unwrap();
 	let mut c2=c2("Flat");
 	c2.add_property(p);
 	c.add_sub_component(c2);

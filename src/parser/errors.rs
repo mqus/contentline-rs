@@ -76,7 +76,7 @@ impl fmt::Display for Error {
 				}
 			}
 			UnexpectedEOF(comp_name, line) => {
-				write!(f, "line {}: Unexpected end, expected END:{}", line, comp_name)
+				write!(f, "line {}: Unexpected end of file or stream, expected END:{}", line, comp_name)
 			}
 		}
 	}

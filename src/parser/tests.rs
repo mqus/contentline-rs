@@ -242,6 +242,17 @@ fn wrong_prop_param5(){
 }
 
 #[test]
+fn wrong_comp_end1(){
+	test_parse_error("BEGIN:co\r\nwas:x\r\n", "line 3: Unexpected end of file or stream, expected END:CO");
+}
+
+#[test]
+fn wrong_comp_end2(){
+	test_parse_error("BEGIN:co\r\nwas:x\r\nend:x\r\n", "line 3: \texpected \"END:CO\": end: >x<\n");
+}
+
+
+#[test]
 fn utf8_1(){
 	let st="BEGIN:co\r\nwas;=x";
 	let mut data=vec![];
