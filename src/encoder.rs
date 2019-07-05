@@ -1,3 +1,4 @@
+#![allow(clippy::write_with_newline)]
 use std::io::Result;
 use std::io::Write;
 
@@ -16,9 +17,6 @@ impl<W> Encoder<W> where W: Write {
 		Encoder { out: writer }
 	}
 
-	pub fn into_writer(self) -> W {
-		self.out
-	}
 	pub fn encode(&mut self, component: &Component) -> Result<()> {
 		self.out.encode_component(component)
 	}
@@ -112,3 +110,14 @@ fn write_folded<W: Write>(writer: &mut W, buf: &mut Vec<u8>, mut data: &str) -> 
 	buf.extend(data.as_bytes());
 	Ok(())
 }
+
+impl<W> From<W> for Encoder<W> where W:Write{
+	fn from(x: W) -> Self {
+		Encoder::new(x)
+	}
+}
+//impl<W> From<Encoder<W>> for W where W:Write{
+//	fn from(w: Encoder<W>) -> Self {
+//		w.out
+//	}
+//}

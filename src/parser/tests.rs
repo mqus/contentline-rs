@@ -62,6 +62,12 @@ fn parse_with_rfc6868_escaping(){
 }
 
 #[test]
+fn parse_empty_property_value(){
+	test_parse("BEGIN:comp\r\nFEATURE;LANG=e^^^n:\r\nEND:Comp\r\n",
+			   c("COMP",vec![p("FEATURE", "",pm(vec![("LANG",vec!["e^\n"])]))],vec![]))
+}
+
+#[test]
 fn parse_complex(){
 	test_parse("BEGIN:comp\r\nFEATURE;Par1=e^'^n,\"other^,val\";PAR2=\"\r\n display:none;\",not interesting:LoremIpsum\r\nEND:Comp\r\n",
 		 c("COMP",vec![p("FEATURE", "LoremIpsum", pm(vec![
@@ -213,7 +219,7 @@ fn wrong_prop_begin2(){
 
 #[test]
 fn wrong_prop_begin3(){
-	test_parse_error("BEGIN:co\r\nwas:\r\n", "line 2: \tproperty value can\'t have length 0: was:<HERE>\n");
+	test_parse_error("BEGIN:co\r\nwas:\r\n", "line 3: \tunexpected end of file or stream, expected END:CO\n");
 }
 
 #[test]
@@ -243,7 +249,7 @@ fn wrong_prop_param5(){
 
 #[test]
 fn wrong_comp_end1(){
-	test_parse_error("BEGIN:co\r\nwas:x\r\n", "line 3: Unexpected end of file or stream, expected END:CO");
+	test_parse_error("BEGIN:co\r\nwas:x\r\n", "line 3: \tunexpected end of file or stream, expected END:CO\n");
 }
 
 #[test]

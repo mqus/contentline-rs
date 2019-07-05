@@ -1,11 +1,9 @@
-use std::io::{BufRead,BufReader,Read,Split};
-
 use core::iter::Peekable;
+use std::io::{BufRead, BufReader, Read, Split};
 
 use crate::{Component, Parameters, Property};
 pub use crate::parser::errors::Error;
-use crate::parser::line_lexer::{Item,ItemType,LineLexer};
-
+use crate::parser::line_lexer::{Item, ItemType, LineLexer};
 
 mod line_lexer;
 mod errors;
@@ -223,5 +221,9 @@ impl<R> Iterator for Parser<R>
 	}
 }
 
-
-
+impl<R> From<R> for Parser<R>
+	where R: BufRead {
+	fn from(bufread: R) -> Self {
+		Parser::new(bufread)
+	}
+}

@@ -334,9 +334,6 @@ fn lex_after_param_value(l: &mut LineLexer) -> State {
 }
 
 fn lex_value(l: &mut LineLexer) -> State {
-	if let Rune::EOF = l.peek() {
-		return l.errorf("property value can't have length 0");
-	}
 	l.accept_run_unless("");
 	if let Rune::EOF = l.peek() {
 		l.emit(ItemType::PropValue);

@@ -58,7 +58,7 @@ impl fmt::Display for Error {
 			Utf8(e) => (e as &Display).fmt(f),
 			CRLF(buf, line, _) => {
 				if buf.is_empty() {
-					write!(f, "line {}: expected CR ('\\r') before LF in empty line", line)
+					writeln!(f, "line {}: expected CR ('\\r') before LF in empty line", line)
 				} else {
 					match String::from_utf8(buf.clone()) {
 						Err(e) => (&e as &Display).fmt(f),
@@ -76,7 +76,7 @@ impl fmt::Display for Error {
 				}
 			}
 			UnexpectedEOF(comp_name, line) => {
-				write!(f, "line {}: Unexpected end of file or stream, expected END:{}", line, comp_name)
+				writeln!(f, "line {}: \tunexpected end of file or stream, expected END:{}", line, comp_name)
 			}
 		}
 	}
