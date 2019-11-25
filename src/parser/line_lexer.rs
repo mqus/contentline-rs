@@ -107,7 +107,7 @@ impl LineLexer {
 
 
 	pub fn next_item(&mut self) -> Option<Item> {
-		while let None=self.emit{
+		while self.emit.is_none(){
 			match self.state {
 				State::Next(sfn) => {
 					self.state = sfn(self);

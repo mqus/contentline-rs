@@ -43,7 +43,7 @@
 
 use std::collections::HashMap;
 use std::error::Error as StdError;
-use std::fmt;
+use core::fmt;
 
 pub use crate::encoder::ComponentEncode;
 pub use crate::encoder::Encoder;

@@ -3,7 +3,7 @@
 use crate::Component;
 use std::io::Cursor;
 use crate::{Parser,Property,Parameters};
-use std::fmt::Debug;
+use core::fmt::Debug;
 use std::error::Error;
 
 pub fn test_parse(input:&str, expected:Component){

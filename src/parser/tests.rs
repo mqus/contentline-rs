@@ -160,7 +160,9 @@ fn parse_no_component2(){
 }
 
 
-//TESTS: EXPECTED ERRORS /TODO
+//TESTS: EXPECTED ERRORS
+
+//MAYBE some cases are still missing, this suite is not exhaustive here.
 #[test]
 fn empty_line(){
 	test_parse_error("\r\n", "expected one or more alphanumerical characters or '-'");
