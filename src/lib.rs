@@ -9,34 +9,77 @@
 //! ## The Contentline format
 //!
 //! contentlines are defined in [RFC 5455] (for iCalendar) and [RFC 6350] (vCard). The general format
-//! distinguishes between **Components** (which represent an entity),
-//! **Properties** (which give attributes to an entity) and **Parameters**
+//! distinguishes between **[Components]** (which represent an entity),
+//! **[Properties]** (which give attributes to an entity) and **[Parameters]**
 //! (which further describe properties). Components can be a part of other Components, Properties
-//! are a part of Components and Parameters are a part Properties.
-//! Components have a name, which defines the type a component has and can have multiple
+//! are a part of Components and Parameters are a part of Properties.
+//! Components have a name which defines the type a component has. Components can have multiple
 //! sub-components and properties. Properties have a name, which defines what property is specified,
 //! and a value, which is the content of the attribute. Properties can also have multiple parameters.
-//! A parameter specifies the property content further and also consists of a name, but can have one
-//! or multiple values.
+//! A parameter specifies the property content further and also consists of a name and can have one
+//! or more values.
 //! An example of a contentline-formatted file would be:
 //! ```txt
-//! BEGIN:COMPONENT\r\n
+//! BEGIN:MYCOMPONENT\r\n
 //! PROPERTY-NAME;PARAMETER-NAME=Parameter-value 1,Parameter-value 2:Property value\r\n
-//! END:COMPONENT\r\n
+//! END:MYCOMPONENT\r\n
 //! ```
 //!
-//! More on this can be read in the mentioned RFCs and also [RFC 6868], which defines a parameter
-//! value encoding.
+//! More on this can be read in the mentioned RFCs and also [RFC 6868], which defines the method for
+//! escaping parameter values.
 //!
 //! ## Encoding/Parsing
+//! If you want to decode your Contentline-String, you just have to create a Parser from something
+//! which implements `BufRead` (via [`new`]) or `Read` (via [`from_unbuffered`]).
+//!
+//! The parser can then be called to try to parse the next component. The parser also implements `Iterator`.
+//!
+//! Example:
+//! ```
+//! use std::io::Cursor;
+//! let input = "BEGIN:comp\r\nmyprop:none\r\nEND:comp\r\n";
+//! let c=Cursor::new(input);
+//! let mut parser=contentline::Parser::new(c);
+//! let component = parser.next_component().unwrap();
 //!
 //! ```
 //!
+//! The parser can also read from files and network sources in the same manner, as long as they implement `Read`.
+//!
+//!
+//! To encode an existing Component struct, you just have to have something implementing `Write` ready.
+//!
+//!
 //! ```
+//! use contentline::{Component, Encoder};
+//! let input = Component{
+//!     name:"comp".to_string(),
+//!     properties:vec![],
+//!     sub_components:vec![]
+//! };
+//!
+//! let output:Vec<u8> = vec![];
+//!
+//! let mut encoder=Encoder::new(output);
+//!
+//! encoder.encode(&input);
+//!
+//! ```
+//!
+//!
+//!
+//!
+//!
+//!
 //!
 //! [RFC 5455]:https://tools.ietf.org/html/rfc5545#section-3.1
 //! [RFC 6350]:https://tools.ietf.org/html/rfc6350#section-3.3
 //! [RFC 6868]:https://tools.ietf.org/html/rfc6868
+//! [Components]:struct.Component.html
+//! [Properties]:struct.Property.html
+//! [Parameters]:type.Parameters.html
+//! [`new`]:struct.Parser.html#method.new
+//! [`from_unbuffered`]:struct.Parser.html#method.from_unbuffered
 
 
 
